@@ -1,5 +1,8 @@
 ﻿using System.Reflection;
 using System.ArrayExtensions;
+using System.Numerics;
+using System.Security.Cryptography.Xml;
+using FLVER_Editor;
 
 namespace System
 {
@@ -68,6 +71,9 @@ namespace System
         {
             return (T)Copy((Object)original);
         }
+    
+        public static float Get(this Vector3 vec, TransformAxis axis) => vec[(int)axis]; 
+        public static float Get(this Vector4 vec, TransformAxis axis) => vec[(int)axis]; 
     }
 
     public class ReferenceEqualityComparer : EqualityComparer<Object>

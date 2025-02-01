@@ -1,6 +1,7 @@
 ﻿using FbxDataExtractor;
 using FLVER_Editor.Actions;
 using FLVER_Editor.FbxImporter.ViewModels;
+using SoulsAssetPipeline.FLVERImporting;
 using SoulsFormats;
 using Win32Types;
 using static FLVER_Editor.Program;
@@ -10,6 +11,11 @@ namespace FLVER_Editor;
 public static class Importer
 {
     public static MeshImportOptions GetDefaultImportOptions()
+    {
+        return new MeshImportOptions(MTDs[0], MaterialInfoBank, WeightingMode.Skin);
+    }
+
+    public static MeshImportOptions GetImportOptions(List<string> MTDs, FLVER2MaterialInfoBank MaterialInfoBank)
     {
         return new MeshImportOptions(MTDs[0], MaterialInfoBank, WeightingMode.Skin);
     }
@@ -36,7 +42,7 @@ public static class Importer
 
     public static bool ImportFbxAsync(FLVER2 flver, string fbxPath, Action refresher)
     {
-        List<FbxMeshDataViewModel> meshes;
+        List<FbxMeshDataViewModel> meshes = new();
         try
         {
             meshes = FbxMeshData.Import(fbxPath).Select(x => new FbxMeshDataViewModel(x)).ToList();
