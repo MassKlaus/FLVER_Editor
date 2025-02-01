@@ -1120,7 +1120,6 @@ public partial class MainWindow : Form
         }
         if (Window != null) UpdateWindowTitle(FlverFilePath);
         Mono3D.textureMap = new Dictionary<string, Texture2D>();
-        Tpf = null;
         FilePath = FlverFilePath;
         if (IsFLVERPath(FlverFilePath))
         {
@@ -1299,7 +1298,7 @@ public partial class MainWindow : Form
         //UpdateUndoState();
         string filename = dialog.FileName;
         string? oldfilename = Flver.Materials[SelectedMaterialIndex].Textures[e.RowIndex].Path;
-        UpdateTextureAction action = new(FlverBnd, FlverFilePath, filename, Path.GetFileNameWithoutExtension(oldfilename), null, filename =>
+        UpdateTextureAction action = new(Tpf, FlverBnd, FlverFilePath, filename, Path.GetFileNameWithoutExtension(oldfilename), null, filename =>
         {
             if (Path.GetFileNameWithoutExtension(filename) == "")
             {
@@ -1390,7 +1389,7 @@ public partial class MainWindow : Form
             {
                 if (ShowWorldOriginCoords)
                 {
-                    float[] totals = CalculateMeshTotals();
+                    float[] totals = CalculateMeshCenter();
                     transXNumBox.Value = (decimal)totals[0] * 55;
                     transYNumBox.Value = (decimal)totals[1] * 55;
                     transZNumBox.Value = (decimal)totals[2] * 55;
@@ -1544,7 +1543,8 @@ public partial class MainWindow : Form
                 UpdateSelectedDummies();
                 break;
             case 5:
-                DuplicateDummyAction action = new(Flver, rowIndex, () =>
+                var dummy = Flver.Dummies[rowIndex];
+                DuplicateDummyAction action = new(Flver, dummy, rowIndex, () =>
                 {
                     SafeDeselectAllSelectedThings();
                     SafeUpdateUI();
@@ -1560,46 +1560,70 @@ public partial class MainWindow : Form
         DummiesTableCheckboxSelected(e.RowIndex, e.ColumnIndex);
     }
 
+
+    // TODO{metty}: Ensure this code is safe to fully remove
     private void TransformThing(dynamic thing, float offset, IReadOnlyList<float> totals, int nbi, decimal newValue, bool uniform, bool vectorMode)
     {
+
         switch (nbi)
         {
             case 0:
             case 1:
             case 2:
-                Transform3DOperations.TranslateThing(thing, offset / 55, nbi);
+                {
+                    var axis = (TransformAxis)nbi;
+                    Transform3DOperations.TranslateThing(thing, offset / 55, (int)axis);
+                }
                 break;
             case 3:
             case 4:
             case 5:
-                Transform3DOperations.ScaleThing(thing, offset, totals, nbi, uniform, false, vectorMode);
-                if (uniform)
                 {
-                    IsSettingDefaultInfo = true;
-                    scaleXNumBox.Value = scaleYNumBox.Value = scaleZNumBox.Value = newValue;
-                    IsSettingDefaultInfo = false;
+                    var axis = (TransformAxis)(nbi - 3);
+                    Transform3DOperations.ScaleThing(thing, offset, totals, (int)axis, uniform, false, vectorMode);
+                    if (uniform)
+                    {
+                        IsSettingDefaultInfo = true;
+                        scaleXNumBox.Value = scaleYNumBox.Value = scaleZNumBox.Value = newValue;
+                        IsSettingDefaultInfo = false;
+                    }
                 }
                 break;
             case 6:
             case 7:
             case 8:
-                Transform3DOperations.RotateThing(thing, offset, totals, nbi, vectorMode);
+                {
+                    var axis = (TransformAxis)(nbi - 6);
+                    Transform3DOperations.RotateThing(thing, offset, totals, (int)axis, vectorMode);
+                }
                 break;
         }
     }
 
-    private static float[] CalculateMeshTotals()
+    private static Vector3 CalculateMeshCenterVec3()
+    {
+        var results = CalculateMeshCenter();
+
+        return new Vector3(results[0], results[1], results[2]);
+    }
+
+    private static float[] CalculateMeshCenter()
     {
         if (UseWorldOrigin) return new float[3];
+
         float vertexCount = 0, xSum = 0, ySum = 0, zSum = 0;
+
         List<int> meshIndices = new();
+
         bool shouldAffectAllMesh = SelectedMeshIndices.Count == 0;
+
         if (shouldAffectAllMesh)
         {
             for (int i = 0; i < Flver.Meshes.Count; ++i)
                 meshIndices.Add(i);
         }
         else meshIndices = SelectedMeshIndices;
+
         foreach (int i in meshIndices)
         {
             foreach (FLVER.Vertex v in Flver.Meshes[i].Vertices)
@@ -1608,6 +1632,7 @@ public partial class MainWindow : Form
                 ySum += v.Position.Y;
                 zSum += v.Position.Z;
             }
+
             vertexCount += Flver.Meshes[i].Vertices.Count;
         }
         return new[] { xSum / vertexCount, ySum / vertexCount, zSum / vertexCount };
@@ -1618,46 +1643,111 @@ public partial class MainWindow : Form
     {
         if (IsSettingDefaultInfo) return;
         NumericUpDown numBox = (NumericUpDown)sender;
-        int nbi = meshModifiersNumBoxesContainer.GetRow(numBox) * meshModifiersNumBoxesContainer.ColumnCount
-            + meshModifiersNumBoxesContainer.GetColumn(numBox);
         float newNumVal = (float)(numBox == rotXNumBox || numBox == rotYNumBox || numBox == rotZNumBox ? ToRadians(numBox.Value) : numBox.Value);
         if (numBox == rotYNumBox && SelectedMeshIndices.Count != 0) newNumVal = -newNumVal;
         if (numBox == scaleXNumBox || numBox == scaleYNumBox || numBox == scaleZNumBox) newNumVal = (float)(numBox.Value / 100);
         float offset = newNumVal < PrevNumVal ?
             -Math.Abs(newNumVal - PrevNumVal)
             : Math.Abs(newNumVal - PrevNumVal);
-        float[] totals = CalculateMeshTotals();
-        MeshTansformAction action = new(Flver, SelectedMeshIndices.ToList(), SelectedDummyIndices.ToList(), offset, totals, nbi, PrevNumVal, newNumVal,
-            uniformScaleCheckbox.Checked, vectorModeCheckbox.Checked, (inputValue, prevNum, uniform, meshes, dummies) =>
-            {
-                Action action = () =>
-                {
-                    SelectedDummyIndices = new List<int>(dummies);
-                    SelectedMeshIndices = new List<int>(meshes);
-                    SafeUpdateUI();
-                    IsSettingDefaultInfo = true;
-                    numBox.Value = inputValue;
-                    if (uniform && nbi is 3 or 4 or 5)
-                    {
-                        scaleXNumBox.Value = inputValue;
-                        scaleYNumBox.Value = inputValue;
-                        scaleZNumBox.Value = inputValue;
-                    }
-                    IsSettingDefaultInfo = false;
-                    UpdateMesh();
-                    PrevNumVal = prevNum;
-                };
 
+        var totals = CalculateMeshCenterVec3();
+
+        int transformType = meshModifiersNumBoxesContainer.GetRow(numBox);
+        var axis = (TransformAxis)meshModifiersNumBoxesContainer.GetColumn(numBox);
+
+        var selectedDummies = new List<FLVER.Dummy>();
+        var selectedMeshes = new List<FLVER2.Mesh>();
+
+        foreach (var dummyIndex in SelectedDummyIndices)
+        {
+            selectedDummies.Add(Flver.Dummies[dummyIndex]);
+        }
+
+        foreach (var meshIndex in SelectedMeshIndices)
+        {
+            selectedMeshes.Add(Flver.Meshes[meshIndex]);
+        }
+
+        // SelectedDummyIndices.ToList(),
+        Action<decimal, float, bool, IEnumerable<FLVER2.Mesh>, IEnumerable<FLVER.Dummy>> refreshAction = (inputValue, prevNum, uniform, meshes, dummies) =>
+        {
+            var dummyIndices = new List<int>(dummies.Count());
+            var meshIndices = new List<int>(meshes.Count());
+
+            for (int i = 0; i < Flver.Dummies.Count; i++)
+            {
+                if (dummies.Contains(Flver.Dummies[i]))
+                {
+                    dummyIndices.Add(i);
+                }
+            }
+
+            for (int i = 0; i < Flver.Meshes.Count; i++)
+            {
+                if (meshes.Contains(Flver.Meshes[i]))
+                {
+                    meshIndices.Add(i);
+                }
+            }
+
+            SelectedMeshIndices = meshIndices;
+            SelectedDummyIndices = dummyIndices;
+
+            SafeUpdateUI();
+            IsSettingDefaultInfo = true;
+            numBox.Value = inputValue;
+
+            if (uniform && transformType is 1)
+            {
+                scaleXNumBox.Value = inputValue;
+                scaleYNumBox.Value = inputValue;
+                scaleZNumBox.Value = inputValue;
+            }
+
+            IsSettingDefaultInfo = false;
+            UpdateMesh();
+            PrevNumVal = prevNum;
+        };
+
+        TransformAction transformAction = transformType switch
+        {
+            0 => new MeshTansformAction(selectedMeshes, selectedDummies, offset, axis, PrevNumVal, newNumVal, (inputValue, prevNum, meshes, dummies) =>
+            {
                 if (InvokeRequired)
                 {
-                    Invoke(() => action.Invoke());
+                    Invoke(() => refreshAction.Invoke(inputValue, prevNum, false, meshes, dummies));
                 }
                 else
                 {
-                    action.Invoke();
+                    refreshAction.Invoke(inputValue, prevNum, false, meshes, dummies);
                 }
-            });
-        ActionManager.Apply(action);
+            }),
+            1 => new MeshScaleAction(selectedMeshes, selectedDummies, offset, totals, axis, PrevNumVal, newNumVal, uniformScaleCheckbox.Checked, vectorModeCheckbox.Checked, (inputValue, prevNum, uniform, meshes, dummies) =>
+            {
+                if (InvokeRequired)
+                {
+                    Invoke(() => refreshAction.Invoke(inputValue, prevNum, false, meshes, dummies));
+                }
+                else
+                {
+                    refreshAction.Invoke(inputValue, prevNum, false, meshes, dummies);
+                }
+            }),
+            2 => new MeshRotateAction(selectedMeshes, selectedDummies, offset, totals, axis, PrevNumVal, newNumVal, vectorModeCheckbox.Checked, (inputValue, prevNum, meshes, dummies) =>
+            {
+                if (InvokeRequired)
+                {
+                    Invoke(() => refreshAction.Invoke(inputValue, prevNum, false, meshes, dummies));
+                }
+                else
+                {
+                    refreshAction.Invoke(inputValue, prevNum, false, meshes, dummies);
+                }
+            }),
+            _ => throw new Exception("Impoosible Transform State."),
+        };
+
+        ActionManager.Apply(transformAction);
     }
 
     private void ModifierNumBoxFocused(object sender, EventArgs e)
@@ -1873,7 +1963,7 @@ public partial class MainWindow : Form
             string bonesTableValue = bonesTable[e.ColumnIndex, e.RowIndex].Value?.ToString();
             if (bonesTableValue is not null)
             {
-                BodesTableCellValueUpdatedAction action = new(Flver, bonesTableValue, e.RowIndex, e.ColumnIndex, () =>
+                BonesTableCellValueUpdatedAction action = new(Flver, bonesTableValue, e.RowIndex, e.ColumnIndex, () =>
                 {
                     SafeUpdateUI();
                     UpdateMesh();
@@ -2251,7 +2341,7 @@ public partial class MainWindow : Form
             FLVER2 newFlver = IsFLVERPath(newFlverFilePath) ? FLVER2.Read(newFlverFilePath) :
                 ReadFLVERFromDCXPath(newFlverFilePath, false, false, false);
             if (newFlver == null) return;
-            MergeFlversAction action = new(Flver, newFlver, FlverFilePath, newFlverFilePath, () =>
+            MergeFlversAction action = new(FlverBnd, Flver, newFlver, FlverFilePath, newFlverFilePath, () =>
             {
                 SafeDeselectAllSelectedThings();
                 SafeUpdateUI();
@@ -2298,7 +2388,7 @@ public partial class MainWindow : Form
     private void AddDummyButtonClicked(object sender, MouseEventArgs e)
     {
         Vector3 position = Flver.Dummies.Count > 0 ? Flver.Dummies[Flver.Dummies.Count - 1].Position : new Vector3(0, 0, 0);
-        AddNewDummyAction action = new(position, () =>
+        AddNewDummyAction action = new(Flver, position, () =>
         {
             SafeDeselectAllSelectedThings();
             SafeUpdateUI();
@@ -2570,7 +2660,7 @@ public partial class MainWindow : Form
 
     private void MirrorMesh(int nbi)
     {
-        float[] totals = CalculateMeshTotals();
+        float[] totals = CalculateMeshCenter();
         List<FLVER2.Mesh> targetMeshes = SelectedMeshIndices.Select(i => Flver.Meshes[i]).ToList();
         List<FLVER.Dummy> targetDummies = SelectedDummyIndices.Select(i => Flver.Dummies[i]).ToList();
         MirrorMeshAction action = new(targetMeshes, targetDummies, nbi, totals, useWorldOriginCheckbox.Checked, vectorModeCheckbox.Checked, () => { UpdateMesh(); });
@@ -3005,27 +3095,66 @@ public partial class MainWindow : Form
         ShowInformationDialog("Successfully flipped the YZ axis!");
     }
 
-    private void CenterMeshToWorld(int nbi)
+    private void CenterMeshToWorld(TransformAxis axis)
     {
-        float[] totals = CalculateMeshTotals();
-        CenterMeshToWorldAction action = new(SelectedMeshIndices.SelectMany(i => Flver.Meshes[i].Vertices).ToList(), SelectedDummyIndices.Select(i => Flver.Dummies[i]).ToList(),
-            nbi, totals, () => { UpdateMesh(); });
+        var totals = CalculateMeshCenterVec3();
+        var relativeWorldOrigin = relativeToWorldOriginCheckbox.Checked;
+
+        var action = new MeshTansformAction(SelectedMeshIndices.Select(i => Flver.Meshes[i]), SelectedDummyIndices.Select(i => Flver.Dummies[i]),
+            totals.Get(axis), axis, 0, 0, (_, _, meshes, dummies) =>
+            {
+                var dummyIndices = new List<int>(dummies.Count());
+                var meshIndices = new List<int>(meshes.Count());
+
+                for (int i = 0; i < Flver.Dummies.Count; i++)
+                {
+                    if (dummies.Contains(Flver.Dummies[i]))
+                    {
+                        dummyIndices.Add(i);
+                    }
+                }
+
+                for (int i = 0; i < Flver.Meshes.Count; i++)
+                {
+                    if (meshes.Contains(Flver.Meshes[i]))
+                    {
+                        meshIndices.Add(i);
+                    }
+                }
+
+                SelectedMeshIndices = meshIndices;
+                SelectedDummyIndices = dummyIndices;
+                SafeUpdateUI();
+                IsSettingDefaultInfo = true;
+                if (relativeWorldOrigin)
+                {
+                    switch (axis)
+                    {
+                        case TransformAxis.X: transXNumBox.Value = 0; break;
+                        case TransformAxis.Y: transXNumBox.Value = 0; break;
+                        case TransformAxis.Z: transXNumBox.Value = 0; break;
+                        default: throw new Exception("Impossivle Axis");
+                    }
+                }
+                IsSettingDefaultInfo = false;
+                UpdateMesh();
+            });
         ActionManager.Apply(action);
     }
 
     private void CenterXButtonClicked(object sender, MouseEventArgs e)
     {
-        CenterMeshToWorld(0);
+        CenterMeshToWorld(TransformAxis.X);
     }
 
     private void CenterYButtonClicked(object sender, MouseEventArgs e)
     {
-        CenterMeshToWorld(1);
+        CenterMeshToWorld(TransformAxis.Y);
     }
 
     private void CenterZButtonClicked(object sender, MouseEventArgs e)
     {
-        CenterMeshToWorld(2);
+        CenterMeshToWorld(TransformAxis.Z);
     }
 
     private void ResetAllMesh()

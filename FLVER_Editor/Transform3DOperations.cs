@@ -90,4 +90,123 @@ namespace FLVER_Editor
         }
 
     }
+
+
+    public enum TransformAxis
+    {
+        X = 0, Y = 1, Z = 2
+    }
+
+    public static class Transform3DOperations2
+    {
+        public static Vector3 CreateTranslationVector(float x, float y, float z, float offset, TransformAxis axis)
+        {
+            var vec = new Vector3(x, y, z);
+            vec[(int)axis] += offset;
+            return vec;
+        }
+
+        public static Vector3 CreateScaleVector(float x, float y, float z, float offset, Vector3 totals, TransformAxis axis, bool uniform, bool invert)
+        {
+            float scalar = offset < 0 && !invert ? -(offset - 1) : invert ? offset - 1 : offset + 1;
+
+            Vector3 vec = new Vector3(x, y, z);
+
+            if (uniform)
+            {
+                vec -= totals;
+            }
+            else
+            {
+                vec[(int)axis] -= totals[(int)axis];
+            }
+
+            if (uniform)
+            {
+                vec = offset < 0 && !invert ? vec / scalar : vec * scalar;
+            }
+            else
+            {
+                vec[(int)axis] = offset < 0 && !invert ? vec[(int)axis] / scalar : vec[(int)axis] * scalar;
+            }
+
+            return vec;
+        }
+
+        public static Vector3 CreateRotationVector(Vector3 coords, float offset, Vector3 totals, TransformAxis axis)
+        {
+            Vector3 offsetPoint = Vector3.Zero;
+            offsetPoint[(int)axis] = offset;
+
+
+            Vector3 vector = coords - totals;
+            vector = Program.RotatePoint(vector, offsetPoint.X, offsetPoint.Y, offsetPoint.Z);
+            return vector + totals;
+        }
+
+        public static Vector4 CreateRotationVector(Vector4 coords, float offset, Vector3 totals, TransformAxis axis)
+        {
+            if (coords.W == 0)
+            {
+                throw new ArgumentException("W is not supposed to be 0");
+            }
+
+            Vector3 pos = new Vector3(coords.X, coords.Y, coords.Z);
+            Vector3 offsetPoint = Vector3.Zero;
+            offsetPoint[(int)axis] = offset;
+
+
+            Vector3 vector = pos - totals;
+            vector = Program.RotatePoint(vector, offsetPoint.X, offsetPoint.Y, offsetPoint.Z);
+            return new Vector4(vector + totals, coords.W);
+        }
+
+        public static void TranslateThing(FLVER.Dummy d, float offset, TransformAxis axis)
+        {
+            d.Position = CreateTranslationVector(d.Position.X, d.Position.Y, d.Position.Z, offset, axis);
+        }
+
+        public static void TranslateThing(FLVER.Vertex v, float offset, TransformAxis axis)
+        {
+            var oldPost = v.Position;
+            v.Position = CreateTranslationVector(v.Position.X, v.Position.Y, v.Position.Z, offset, axis);
+        }
+
+        public static void ScaleThing(FLVER.Vertex v, float offset, Vector3 totals, TransformAxis axis, bool uniform, bool invert, bool useVectorMode)
+        {
+            v.Position = CreateScaleVector(v.Position.X, v.Position.Y, v.Position.Z, offset, totals, axis, uniform, invert);
+            v.Normal = v.Normal with { Z = invert && axis != TransformAxis.Z ? -v.Normal.Z : v.Normal.Z };
+            if (v.Tangents.Count > 0) v.Tangents[0] = new Vector4(v.Tangents[0].X, v.Tangents[0].Y, invert && axis != TransformAxis.Z ? -v.Normal.Z : v.Normal.Z, v.Tangents[0].W);
+        }
+
+        public static void ScaleThing(FLVER.Dummy d, float offset, Vector3 totals, TransformAxis axis, bool uniform, bool invert, bool useVectorMode)
+        {
+            if (useVectorMode) d.Forward = CreateTranslationVector(d.Forward.X, d.Forward.Y, d.Forward.Z, offset, axis);
+            else d.Position = CreateScaleVector(d.Position.X, d.Position.Y, d.Position.Z, offset, totals, axis, uniform, invert);
+        }
+
+        public static void RotateThing(FLVER.Dummy d, float offset, Vector3 totals, TransformAxis axis, bool useVectorMode)
+        {
+            Vector3 offsetPoint = Vector3.Zero;
+            offsetPoint[(int)axis] = offset;
+
+            if (useVectorMode) d.Forward = Program.RotatePoint(d.Forward, offsetPoint.X, offsetPoint.Z, offsetPoint.Y);
+            else d.Position = CreateRotationVector(d.Position, offset, totals, axis);
+        }
+
+        public static void RotateThing(FLVER.Vertex v, float offset, Vector3 totals, TransformAxis axis, bool useVectorMode)
+        {
+            v.Position = CreateRotationVector(v.Position, offset, totals, axis);
+            v.Normal = CreateRotationVector(v.Normal, offset, Vector3.Zero, axis);
+
+            if (v.Tangents.Count > 0)
+            {
+                Vector4 position = v.Tangents[0];
+                position.W = v.Tangents[0].W == 0 ? -1 : v.Tangents[0].W;
+                v.Tangents[0] = CreateRotationVector(position, offset, Vector3.Zero, axis);
+            }
+        }
+
+    }
+
 }
