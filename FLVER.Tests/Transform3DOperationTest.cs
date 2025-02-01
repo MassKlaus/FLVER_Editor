@@ -6,10 +6,12 @@ namespace FLVERS.Tests;
 
 public class Transform3DOperationsTest
 {
+    // Translation Tests
     [Theory]
-    [InlineData(1, 2, 3, 1, TransformAxis.X, 2, 2, 3)]
-    [InlineData(1, 2, 3, -1, TransformAxis.Y, 1, 1, 3)]
-    [InlineData(1, 2, 3, 5, TransformAxis.Z, 1, 2, 8)]
+    [InlineData(1, 2, 3, 0, TransformAxis.X, 1, 2, 3)] // No translation
+    [InlineData(1, 2, 3, -3, TransformAxis.Y, 1, -1, 3)] // Negative translation
+    [InlineData(0, 0, 0, 10, TransformAxis.Z, 0, 0, 10)] // Origin translation
+    [InlineData(1.5f, -2.5f, 3.5f, 2.5f, TransformAxis.X, 4, -2.5f, 3.5f)] // Decimal translation
     public void CreateTranslationVector_WorksCorrectly(float x, float y, float z, float offset, TransformAxis axis, float ex, float ey, float ez)
     {
         var expected = Transform3DOperations.CreateTranslationVector(x, y, z, offset, (int)axis);
@@ -17,10 +19,12 @@ public class Transform3DOperationsTest
         Assert.Equal(expected, result);
     }
 
+    // Scaling Tests
     [Theory]
-    [InlineData(1, 2, 3, 0.5f, new float[] { 0, 0, 0 }, TransformAxis.X, false, false, 0.5f, 2, 3)]
-    [InlineData(2, 4, 6, 2, new float[] { 0, 0, 0 }, TransformAxis.Y, false, false, 2, 8, 6)]
-    [InlineData(3, 6, 9, -1, new float[] { 0, 0, 0 }, TransformAxis.Z, false, true, 3, 6, 4.5f)]
+    [InlineData(2, 3, 4, 1.5f, new float[] { 0, 0, 0 }, TransformAxis.X, true, false, 3, 4.5f, 6)] // Uniform scaling
+    [InlineData(2, 3, 4, -2, new float[] { 0, 0, 0 }, TransformAxis.Y, false, false, 2, -6, 4)] // Negative scaling
+    [InlineData(1, 1, 1, 0, new float[] { 0, 0, 0 }, TransformAxis.Z, false, false, 1, 1, 1)] // No scaling
+    [InlineData(2, 4, 6, 0.5f, new float[] { 5, 5, 5 }, TransformAxis.Y, false, true, 2, 2, 6)] // Inverted scaling
     public void CreateScaleVector_WorksCorrectly(float x, float y, float z, float offset, float[] totals, TransformAxis axis, bool uniform, bool invert, float ex, float ey, float ez)
     {
         var expected = Transform3DOperations.CreateScaleVector(x, y, z, offset, totals, (int)axis, uniform, invert);
@@ -29,10 +33,13 @@ public class Transform3DOperationsTest
         Assert.Equal(expected, result);
     }
 
+
+    // Rotation Tests (Quaternion-based)
     [Theory]
-    [InlineData(1, 0, 0, 1, 90, new float[] { 0, 0, 15 }, TransformAxis.Y)]
-    [InlineData(0, 1, 0, 1, 180, new float[] { 0, 5, 0 }, TransformAxis.X)]
-    [InlineData(0, 0, 1, 1, 180, new float[] { 2, 0, 0 }, TransformAxis.X)]
+    [InlineData(1, 0, 0, 1, 90, new float[] { 0, 0, 0 }, TransformAxis.Y)]
+    [InlineData(0, 1, 0, 1, 180, new float[] { 5, 0, 0 }, TransformAxis.Z)]
+    [InlineData(0, 0, 1, 1, 270, new float[] { 0, 5, 0 }, TransformAxis.X)]
+    [InlineData(1, 1, 1, 1, 360, new float[] { 10, 10, 10 }, TransformAxis.Y)]
     public void CreateRotationVector_WorksCorrectly_Vec4(float x, float y, float z, float w, float offset, float[] totals, TransformAxis axis)
     {
         var expected = Transform3DOperations.CreateRotationVector(x, y, z, w, offset, totals, (int)axis);
@@ -59,9 +66,12 @@ public class Transform3DOperationsTest
         Assert.Throws<ArgumentException>(() => Transform3DOperations2.CreateRotationVector(new Vector4(x, y, z, w), offset, vecTotals, axis));
     }
 
+    // Rotation Tests (Vector3-based)
     [Theory]
     [InlineData(1, 0, 0, 90, new float[] { 0, 0, 0 }, TransformAxis.Y)]
     [InlineData(0, 1, 0, 180, new float[] { 0, 0, 0 }, TransformAxis.X)]
+    [InlineData(0, 0, 1, 270, new float[] { 0, 0, 0 }, TransformAxis.Z)]
+    [InlineData(1, 1, 0, 360, new float[] { 5, 5, 0 }, TransformAxis.Y)]
     public void CreateRotationVector_WorksCorrectly_Vec3(float x, float y, float z, float offset, float[] totals, TransformAxis axis)
     {
         var expected = Transform3DOperations.CreateRotationVector(x, y, z, 0, offset, totals, (int)axis);
@@ -76,6 +86,5 @@ public class Transform3DOperationsTest
         }
 
         Assert.Fail("Wrong dynamic type result");
-
     }
 }
