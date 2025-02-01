@@ -123,11 +123,12 @@ namespace FLVER_Editor
 
             if (uniform)
             {
-                vec = offset < 0 && !invert ? vec / scalar : vec * scalar;
+                vec = (offset < 0 && !invert ? vec / scalar : vec * scalar) + totals;
+
             }
             else
             {
-                vec[(int)axis] = offset < 0 && !invert ? vec[(int)axis] / scalar : vec[(int)axis] * scalar;
+                vec[(int)axis] = (offset < 0 && !invert ? vec[(int)axis] / scalar : vec[(int)axis] * scalar) + totals.Get(axis);
             }
 
             return vec;
