@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace FLVER_Editor.Actions;
 
-public class BodesTableCellValueUpdatedAction : TransformAction
+public class BonesTableCellValueUpdatedAction : TransformAction
 {
     private readonly FLVER2 flver;
     private readonly string bonesTableValue;
@@ -17,7 +17,7 @@ public class BodesTableCellValueUpdatedAction : TransformAction
     private readonly Action refresher;
     private string oldValue = string.Empty;
 
-    public BodesTableCellValueUpdatedAction(FLVER2 flver, string bonesTableValue, int row, int col, Action refresher)
+    public BonesTableCellValueUpdatedAction(FLVER2 flver, string bonesTableValue, int row, int col, Action refresher)
     {
         this.flver = flver;
         this.bonesTableValue = bonesTableValue;
