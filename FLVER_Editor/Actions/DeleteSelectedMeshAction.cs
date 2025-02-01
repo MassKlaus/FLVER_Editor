@@ -59,6 +59,7 @@ public class DeleteSelectedMeshAction : TransformAction
                     facesetOldIndices.Add(fs, facesetIndices);
                 }
 
+
             }
         }
         else

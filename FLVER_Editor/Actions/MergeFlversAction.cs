@@ -6,19 +6,21 @@ public class MergeFlversAction : TransformAction
 {
     private readonly string _flverFilePath;
     private readonly string _newFlverFilePath;
-    private readonly FLVER2 flver;
+    private readonly IBNDWrapper bnd;
+    private readonly FLVER2 currentFlver;
     private readonly int layoutOffset;
     private readonly int materialOffset;
     private readonly int meshOffset;
     private readonly FLVER2 newFlver;
     private readonly Action refresher;
 
-    public MergeFlversAction(FLVER2 currentFlver, FLVER2 newFlver, string flverFilePath, string newFlverFilePath, Action refresher)
+    public MergeFlversAction(IBNDWrapper bnd, FLVER2 currentFlver, FLVER2 newFlver, string flverFilePath, string newFlverFilePath, Action refresher)
     {
         materialOffset = currentFlver.Materials.Count;
         meshOffset = currentFlver.Meshes.Count;
         layoutOffset = currentFlver.BufferLayouts.Count;
-        flver = currentFlver;
+        this.bnd = bnd;
+        this.currentFlver = currentFlver;
         _flverFilePath = flverFilePath;
         _newFlverFilePath = newFlverFilePath;
         this.newFlver = newFlver;
@@ -31,9 +33,9 @@ public class MergeFlversAction : TransformAction
         for (int i = 0; i < newFlver.Nodes.Count; ++i)
         {
             FLVER.Node attachBone = newFlver.Nodes[i];
-            for (int j = 0; j < flver.Nodes.Count; ++j)
+            for (int j = 0; j < currentFlver.Nodes.Count; ++j)
             {
-                if (attachBone.Name != flver.Nodes[j].Name) continue;
+                if (attachBone.Name != currentFlver.Nodes[j].Name) continue;
                 newFlverToCurrentFlver.Add(i, j);
                 break;
             }
@@ -52,11 +54,11 @@ public class MergeFlversAction : TransformAction
             }
         }
         foreach (FLVER2.Material material in newFlver.Materials)
-            material.GXIndex += flver.GXLists.Count;
-        flver.BufferLayouts = flver.BufferLayouts.Concat(newFlver.BufferLayouts).ToList();
-        flver.Meshes = flver.Meshes.Concat(newFlver.Meshes).ToList();
-        flver.Materials = flver.Materials.Concat(newFlver.Materials).ToList();
-        flver.GXLists = flver.GXLists.Concat(newFlver.GXLists).ToList();
+            material.GXIndex += currentFlver.GXLists.Count;
+        currentFlver.BufferLayouts = currentFlver.BufferLayouts.Concat(newFlver.BufferLayouts).ToList();
+        currentFlver.Meshes = currentFlver.Meshes.Concat(newFlver.Meshes).ToList();
+        currentFlver.Materials = currentFlver.Materials.Concat(newFlver.Materials).ToList();
+        currentFlver.GXLists = currentFlver.GXLists.Concat(newFlver.GXLists).ToList();
 
         // TODO: WIP (Pear)
         TPF newFlverTpf = new();
@@ -70,13 +72,12 @@ public class MergeFlversAction : TransformAction
         {
             newFlverTpf = TPF.Read(_newFlverFilePath.Replace(".flver", ".tpf"));
         }
-        if (Program.Tpf == null)
-            Program.Tpf = TPF.Read(_flverFilePath.Replace(".flver", ".tpf"));
+        Program.Tpf ??= TPF.Read(_flverFilePath.Replace(".flver", ".tpf"));
         foreach (TPF.Texture tex in newFlverTpf)
         {
             if (Program.Tpf.Textures.All(i => i.Name != tex.Name))
             {
-                UpdateTextureAction action = new(MainWindow.FlverBnd, MainWindow.FlverFilePath, "", tex.Name, tex, _ => { });
+                UpdateTextureAction action = new(Program.Tpf, bnd, _flverFilePath, "", tex.Name, tex, _ => { });
                 ActionManager.Apply(action);
             }
         }
@@ -93,9 +94,9 @@ public class MergeFlversAction : TransformAction
             foreach (FLVER2.VertexBuffer vb in m.VertexBuffers)
                 vb.LayoutIndex -= layoutOffset;
         }
-        flver.BufferLayouts.RemoveRange(layoutOffset, flver.BufferLayouts.Count - layoutOffset);
-        flver.Meshes.RemoveRange(meshOffset, flver.Meshes.Count - meshOffset);
-        flver.Materials.RemoveRange(materialOffset, flver.Materials.Count - materialOffset);
+        currentFlver.BufferLayouts.RemoveRange(layoutOffset, currentFlver.BufferLayouts.Count - layoutOffset);
+        currentFlver.Meshes.RemoveRange(meshOffset, currentFlver.Meshes.Count - meshOffset);
+        currentFlver.Materials.RemoveRange(materialOffset, currentFlver.Materials.Count - materialOffset);
         refresher.Invoke();
     }
 }

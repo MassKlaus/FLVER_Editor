@@ -10,11 +10,13 @@ namespace FLVER_Editor.Actions;
 
 public class AddNewDummyAction : TransformAction
 {
+    private readonly FLVER2 flver;
     private readonly Action refresher;
     private readonly FLVER.Dummy newDummy;
 
-    public AddNewDummyAction(Vector3 position, Action refresher)
+    public AddNewDummyAction(FLVER2 flver, Vector3 position, Action refresher)
     {
+        this.flver = flver;
         this.refresher = refresher;
         newDummy = new()
         {
@@ -25,13 +27,13 @@ public class AddNewDummyAction : TransformAction
 
     public override void Execute()
     {
-        MainWindow.Flver.Dummies.Add(newDummy);
+        flver.Dummies.Add(newDummy);
         refresher.Invoke();
     }
 
     public override void Undo()
     {
-        MainWindow.Flver.Dummies.Remove(newDummy);
+        flver.Dummies.Remove(newDummy);
         refresher.Invoke();
     }
 }

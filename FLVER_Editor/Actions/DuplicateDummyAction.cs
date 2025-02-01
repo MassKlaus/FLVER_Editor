@@ -10,36 +10,21 @@ namespace FLVER_Editor.Actions;
 public class DuplicateDummyAction : TransformAction
 {
     private readonly FLVER2 flver;
-    private readonly int rowIndex;
+    private readonly int insertIndex;
     private readonly FLVER.Dummy dummy;
     private Action? windowRefresh;
 
-    public DuplicateDummyAction(FLVER2 flver, int rowIndex, Action refresh)
+    public DuplicateDummyAction(FLVER2 flver, FLVER.Dummy dummy, int insertIndex, Action refresh)
     {
         this.flver = flver;
-        this.rowIndex = rowIndex;
-
-        dummy = new()
-        {
-            Position = MainWindow.Flver.Dummies[rowIndex].Position,
-            Forward = MainWindow.Flver.Dummies[rowIndex].Forward,
-            Upward = MainWindow.Flver.Dummies[rowIndex].Upward,
-            ReferenceID = MainWindow.Flver.Dummies[rowIndex].ReferenceID,
-            ParentBoneIndex = MainWindow.Flver.Dummies[rowIndex].ParentBoneIndex,
-            AttachBoneIndex = MainWindow.Flver.Dummies[rowIndex].AttachBoneIndex,
-            Color = MainWindow.Flver.Dummies[rowIndex].Color,
-            Flag1 = MainWindow.Flver.Dummies[rowIndex].Flag1,
-            UseUpwardVector = MainWindow.Flver.Dummies[rowIndex].UseUpwardVector,
-            Unk30 = MainWindow.Flver.Dummies[rowIndex].Unk30,
-            Unk34 = MainWindow.Flver.Dummies[rowIndex].Unk34
-        };
-
+        this.insertIndex = insertIndex;
+        this.dummy = dummy.Copy();
         this.windowRefresh = refresh;
     }
 
     public override void Execute()
     {
-        flver.Dummies.Add(dummy);
+        flver.Dummies.Insert(insertIndex, dummy);
         windowRefresh?.Invoke();
     }
 

@@ -23,7 +23,8 @@ public class ImportMeshesToFlverAction : TransformAction
     private readonly int allSkeletonsCount;
     private readonly List<FLVER2.SkeletonSet.Bone> oldBaseBones = new();
     private readonly List<FLVER2.SkeletonSet.Bone> oldAllBones = new();
-    private readonly Dictionary<FLVER.Node, FLVER.Node.NodeFlags> oldNodes = new();
+    private readonly List<FLVER.Node> oldNodes = new();
+    private readonly Dictionary<FLVER.Node, Tuple<FLVER.Node.NodeFlags, short>> oldNodeFlags = new();
     private readonly FLVER2.SkeletonSet oldSkeleton;
 
     public ImportMeshesToFlverAction(FLVER2 flver, Dictionary<FbxMeshDataViewModel, MeshImportOptions> mesh, Action refresher)
@@ -50,6 +51,7 @@ public class ImportMeshesToFlverAction : TransformAction
     {
         oldNodes.Clear();
         oldBaseBones.Clear();
+        oldNodeFlags.Clear();
         oldNodes.Clear();
         flver.Skeletons ??= new();
 
@@ -57,7 +59,10 @@ public class ImportMeshesToFlverAction : TransformAction
         SaveNodesToSkeleton(flver, flver.Skeletons.AllSkeletons, oldAllBones);
         SaveNodesToSkeleton(flver, flver.Skeletons.BaseSkeleton, oldBaseBones);
 
-        meshes.ToList().ForEach(i => i.Key.ToFlverMesh(flver, i.Value));
+        foreach (var mesh in meshes)
+        {
+            mesh.Key.ToFlverMesh(flver, mesh.Value);
+        }
 
         refresher.Invoke();
     }
@@ -158,17 +163,26 @@ public class ImportMeshesToFlverAction : TransformAction
     {
         foreach (var node in flver.Nodes)
         {
-            oldNodes.Add(node, node.Flags);
+            oldNodes.Add(node);
+            oldNodeFlags.Add(node, new(node.Flags, node.NextSiblingIndex));
         }
     }
 
     private void UndoNodeFlags(FLVER2 flver)
     {
-        foreach (var item in oldNodes)
+        foreach (var item in oldNodeFlags)
         {
             var node = item.Key;
             var value = item.Value;
-            node.Flags = value;
+            node.Flags = value.Item1;
+            node.NextSiblingIndex = value.Item2;
+        }
+
+        flver.Nodes.Clear();
+        for (int i = 0; i < oldNodes.Count; i++)
+        {
+            var node = oldNodes[i];
+            flver.Nodes.Add(node);
         }
     }
 

@@ -8,10 +8,10 @@ namespace FLVER_Editor.Actions
 {
     public class DeleteConnectedVerticesAction : TransformAction
     {
-        public DeleteConnectedVerticesAction(FLVER2.Mesh mesh, int startVertexIndex, Action refresher)
+        public DeleteConnectedVerticesAction(FLVER2.Mesh mesh, int connectedVerticesIndex, Action refresher)
         {
             this.mesh = mesh;
-            this.startVertexIndex = startVertexIndex;
+            this.startVertexIndex = connectedVerticesIndex;
             this.refresher = refresher;
         }
 
