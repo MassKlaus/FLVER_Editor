@@ -1,3 +1,4 @@
+using System.Numerics;
 using SoulsFormats;
 
 namespace FLVERS.Tests;
@@ -5,13 +6,17 @@ namespace FLVERS.Tests;
 
 public static class FlverTestHelper
 {
+    public static void Equal(Vector3 expected, Vector3 actual)
+    {
+        Assert.Equal(expected.X, actual.X, 0.001);
+        Assert.Equal(expected.Y, actual.Y, 0.001);
+        Assert.Equal(expected.Z, actual.Z, 0.001);
+    }
     public static void Equal(FLVER.Dummy expected, FLVER.Dummy actual)
     {
-        Assert.Equal(expected.Position.X, actual.Position.X, 0.001);
-        Assert.Equal(expected.Position.Y, actual.Position.Y, 0.001);
-        Assert.Equal(expected.Position.Z, actual.Position.Z, 0.001);
-        Assert.Equal(expected.Forward, actual.Forward);
-        Assert.Equal(expected.Upward, actual.Upward);
+
+        Equal(expected.Forward, actual.Forward);
+        Equal(expected.Upward, actual.Upward);
         Assert.Equal(expected.ReferenceID, actual.ReferenceID);
         Assert.Equal(expected.ParentBoneIndex, actual.ParentBoneIndex);
         Assert.Equal(expected.AttachBoneIndex, actual.AttachBoneIndex);
@@ -210,9 +215,7 @@ public static class FlverTestHelper
             Assert.Equal(originalVertices.Colors, vertices.Colors);
             Assert.Equal(originalVertices.Normal, vertices.Normal);
             Assert.Equal(originalVertices.NormalW, vertices.NormalW);
-            Assert.Equal(originalVertices.Position.X, vertices.Position.X, 0.001);
-            Assert.Equal(originalVertices.Position.Y, vertices.Position.Y, 0.001);
-            Assert.Equal(originalVertices.Position.Z, vertices.Position.Z, 0.001);
+            Equal(originalVertices.Position, vertices.Position);
             Assert.Equal(originalVertices.Tangents, vertices.Tangents);
             Assert.Equal(originalVertices.UVs, vertices.UVs);
         }
@@ -223,12 +226,7 @@ public static class FlverTestHelper
         {
             var originalVertices = originalMesh.FaceSets[j];
             var vertices = originalMesh.FaceSets[j];
-
-            Assert.Equal(originalVertices.CullBackfaces, vertices.CullBackfaces);
-            Assert.Equal(originalVertices.Flags, vertices.Flags);
-            Assert.Equal(originalVertices.Indices, vertices.Indices);
-            Assert.Equal(originalVertices.TriangleStrip, vertices.TriangleStrip);
-            Assert.Equal(originalVertices.Unk06, vertices.Unk06);
+            Equal(originalVertices, vertices);
         }
     }
 
@@ -273,9 +271,7 @@ public static class FlverTestHelper
             Assert.Equal(originalVertices.Colors, vertices.Colors);
             Assert.Equal(originalVertices.Normal, vertices.Normal);
             Assert.Equal(originalVertices.NormalW, vertices.NormalW);
-            Assert.Equal(originalVertices.Position.X, vertices.Position.X, 0.001);
-            Assert.Equal(originalVertices.Position.Y, vertices.Position.Y, 0.001);
-            Assert.Equal(originalVertices.Position.Z, vertices.Position.Z, 0.001);
+            Equal(originalVertices.Position, vertices.Position);
 
             Assert.Equal(originalVertices.Tangents, vertices.Tangents);
             Assert.Equal(originalVertices.UVs, vertices.UVs);
@@ -287,13 +283,17 @@ public static class FlverTestHelper
         {
             var originalVertices = originalMesh.FaceSets[j];
             var vertices = originalMesh.FaceSets[j];
-
-            Assert.Equal(originalVertices.CullBackfaces, vertices.CullBackfaces);
-            Assert.Equal(originalVertices.Flags, vertices.Flags);
-            Assert.Equal(originalVertices.Indices, vertices.Indices);
-            Assert.Equal(originalVertices.TriangleStrip, vertices.TriangleStrip);
-            Assert.Equal(originalVertices.Unk06, vertices.Unk06);
+            Equal(originalVertices, vertices);
         }
+    }
+
+    public static void Equal(FLVER2.FaceSet originalVertices, FLVER2.FaceSet vertices)
+    {
+        Assert.Equal(originalVertices.CullBackfaces, vertices.CullBackfaces);
+        Assert.Equal(originalVertices.Flags, vertices.Flags);
+        Assert.Equal(originalVertices.Indices, vertices.Indices);
+        Assert.Equal(originalVertices.TriangleStrip, vertices.TriangleStrip);
+        Assert.Equal(originalVertices.Unk06, vertices.Unk06);
     }
 
     public static void Equal(FLVER0 expected, FLVER0 actual)
@@ -321,11 +321,9 @@ public static class FlverTestHelper
             var originalDummy = expected.Dummies[i];
             var dummy = actual.Dummies[i];
 
-            Assert.Equal(originalDummy.Position.X, dummy.Position.X, 0.001);
-            Assert.Equal(originalDummy.Position.Y, dummy.Position.Y, 0.001);
-            Assert.Equal(originalDummy.Position.Z, dummy.Position.Z, 0.001);
-            Assert.Equal(originalDummy.Forward, dummy.Forward);
-            Assert.Equal(originalDummy.Upward, dummy.Upward);
+            Equal(originalDummy.Position, dummy.Position);
+            Equal(originalDummy.Forward, dummy.Forward);
+            Equal(originalDummy.Upward, dummy.Upward);
             Assert.Equal(originalDummy.ReferenceID, dummy.ReferenceID);
             Assert.Equal(originalDummy.ParentBoneIndex, dummy.ParentBoneIndex);
             Assert.Equal(originalDummy.AttachBoneIndex, dummy.AttachBoneIndex);
@@ -403,9 +401,7 @@ public static class FlverTestHelper
                 Assert.Equal(originalVertices.Colors, vertices.Colors);
                 Assert.Equal(originalVertices.Normal, vertices.Normal);
                 Assert.Equal(originalVertices.NormalW, vertices.NormalW);
-                Assert.Equal(originalVertices.Position.X, vertices.Position.X, 0.001);
-                Assert.Equal(originalVertices.Position.Y, vertices.Position.Y, 0.001);
-                Assert.Equal(originalVertices.Position.Z, vertices.Position.Z, 0.001);
+                Equal(originalVertices.Position, vertices.Position);
                 Assert.Equal(originalVertices.Tangents, vertices.Tangents);
                 Assert.Equal(originalVertices.UVs, vertices.UVs);
             }

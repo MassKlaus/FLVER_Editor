@@ -17,8 +17,20 @@ public class FLVER2MeshTansformActionTests : IClassFixture<DataFixture>
 
     [Theory]
     [InlineData(10, TransformAxis.X)]
+    [InlineData(120, TransformAxis.X)]
+    [InlineData(130, TransformAxis.X)]
+    [InlineData(510, TransformAxis.X)]
+    [InlineData(160, TransformAxis.X)]
     [InlineData(10, TransformAxis.Y)]
+    [InlineData(120, TransformAxis.Y)]
+    [InlineData(130, TransformAxis.Y)]
+    [InlineData(510, TransformAxis.Y)]
+    [InlineData(160, TransformAxis.Y)]
     [InlineData(10, TransformAxis.Z)]
+    [InlineData(120, TransformAxis.Z)]
+    [InlineData(130, TransformAxis.Z)]
+    [InlineData(510, TransformAxis.Z)]
+    [InlineData(160, TransformAxis.Z)]
     public void TranslateActionThenUndo(float offset, TransformAxis axis)
     {
         FLVER2 file = FLVER2.Read(dataFixture.Flver2_1);

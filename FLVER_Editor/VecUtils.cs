@@ -3,6 +3,36 @@ using SoulsFormats;
 
 namespace FLVER_Editor;
 
+public static class MeshHelpers
+{
+    public static Vector3 CalculateMeshCenterVec3(IEnumerable<FLVER2.Mesh> meshes, bool useWorldOrigin)
+    {
+        var results = CalculateMeshCenter(meshes, useWorldOrigin);
+
+        return new Vector3(results[0], results[1], results[2]);
+    }
+
+    public static float[] CalculateMeshCenter(IEnumerable<FLVER2.Mesh> meshes, bool useWorldOrigin)
+    {
+        if (useWorldOrigin) return new float[3];
+
+        float vertexCount = 0, xSum = 0, ySum = 0, zSum = 0;
+
+        foreach (var mesh in meshes)
+        {
+            foreach (FLVER.Vertex v in mesh.Vertices)
+            {
+                xSum += v.Position.X;
+                ySum += v.Position.Y;
+                zSum += v.Position.Z;
+            }
+
+            vertexCount += mesh.Vertices.Count;
+        }
+        return new[] { xSum / vertexCount, ySum / vertexCount, zSum / vertexCount };
+    }
+}
+
 public static class VecUtils
 {
     // Rotation logic taken from cannon.js:

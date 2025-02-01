@@ -15,10 +15,17 @@ public class FLVER2ReverseFaceSetsActionTests : IClassFixture<DataFixture>
     }
 
     [Fact]
-    public void UnWrittenTest()
+    public void FlipFaceSetsAndUndo()
     {
-        // This is a placeholder for future implementation.
-        // Ensure that the actual logic is implemented later.
-        Assert.Fail("This test needs to be implemented.");
+        var file = FLVER2.Read(dataFixture.Flver2_1);
+        var expected = dataFixture.Flver2_1_Read;
+
+        ReverseFaceSetsAction action = new(file.Meshes[0].FaceSets, () => { });
+        action.Execute();
+        action.Undo();
+        for (int i = 0; i < expected.Meshes[0].FaceSets.Count; i++)
+        {
+            FlverTestHelper.Equal(expected.Meshes[0].FaceSets[i], file.Meshes[0].FaceSets[i]);
+        }
     }
 }

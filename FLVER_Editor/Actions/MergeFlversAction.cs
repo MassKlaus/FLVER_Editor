@@ -4,27 +4,30 @@ namespace FLVER_Editor.Actions;
 
 public class MergeFlversAction : TransformAction
 {
-    private readonly string _flverFilePath;
-    private readonly string _newFlverFilePath;
-    private readonly IBNDWrapper bnd;
     private readonly FLVER2 currentFlver;
     private readonly int layoutOffset;
     private readonly int materialOffset;
     private readonly int meshOffset;
+    private readonly int gxOffset;
     private readonly FLVER2 newFlver;
+    private readonly TPF? currentTPF;
+    private readonly TPF? newFlverTpf;
+    private readonly Stack<AddTextureAction> addActions = new();
     private readonly Action refresher;
 
-    public MergeFlversAction(IBNDWrapper bnd, FLVER2 currentFlver, FLVER2 newFlver, string flverFilePath, string newFlverFilePath, Action refresher)
+    public MergeFlversAction(FLVER2 currentFlver, FLVER2 newFlver, TPF? currentTPF, TPF? newFlverTpf, Action refresher)
     {
         materialOffset = currentFlver.Materials.Count;
         meshOffset = currentFlver.Meshes.Count;
         layoutOffset = currentFlver.BufferLayouts.Count;
-        this.bnd = bnd;
+        gxOffset = currentFlver.GXLists.Count;
         this.currentFlver = currentFlver;
-        _flverFilePath = flverFilePath;
-        _newFlverFilePath = newFlverFilePath;
         this.newFlver = newFlver;
+        this.currentTPF = currentTPF;
+        this.newFlverTpf = newFlverTpf;
         this.refresher = refresher;
+
+        // TODO: WIP (Pear)
     }
 
     public override void Execute()
@@ -54,33 +57,23 @@ public class MergeFlversAction : TransformAction
             }
         }
         foreach (FLVER2.Material material in newFlver.Materials)
-            material.GXIndex += currentFlver.GXLists.Count;
+            material.GXIndex += gxOffset;
         currentFlver.BufferLayouts = currentFlver.BufferLayouts.Concat(newFlver.BufferLayouts).ToList();
         currentFlver.Meshes = currentFlver.Meshes.Concat(newFlver.Meshes).ToList();
         currentFlver.Materials = currentFlver.Materials.Concat(newFlver.Materials).ToList();
         currentFlver.GXLists = currentFlver.GXLists.Concat(newFlver.GXLists).ToList();
 
-        // TODO: WIP (Pear)
-        TPF newFlverTpf = new();
-        if (_newFlverFilePath.EndsWith(".dcx"))
+
+        if (currentTPF is not null && newFlverTpf is not null)
         {
-            BND4? newFlverBnd = BND4.Read(_newFlverFilePath);
-            BinderFile? newFlverTpfEntry = newFlverBnd.Files.Find(i => i.Name.EndsWith(".tpf"));
-            if (newFlverTpfEntry != null) newFlverTpf = TPF.Read(newFlverTpfEntry.Bytes);
-        }
-        else if (_newFlverFilePath.EndsWith(".flver"))
-        {
-            newFlverTpf = TPF.Read(_newFlverFilePath.Replace(".flver", ".tpf"));
-        }
-        Program.Tpf ??= TPF.Read(_flverFilePath.Replace(".flver", ".tpf"));
-        foreach (TPF.Texture tex in newFlverTpf)
-        {
-            if (Program.Tpf.Textures.All(i => i.Name != tex.Name))
+            foreach (TPF.Texture tex in newFlverTpf)
             {
-                UpdateTextureAction action = new(Program.Tpf, bnd, _flverFilePath, "", tex.Name, tex, _ => { });
-                ActionManager.Apply(action);
+                var action = new AddTextureAction(currentTPF, tex, () => { });
+                action.Execute();
+                addActions.Push(action);
             }
         }
+
         refresher.Invoke();
     }
 
@@ -94,9 +87,20 @@ public class MergeFlversAction : TransformAction
             foreach (FLVER2.VertexBuffer vb in m.VertexBuffers)
                 vb.LayoutIndex -= layoutOffset;
         }
+
         currentFlver.BufferLayouts.RemoveRange(layoutOffset, currentFlver.BufferLayouts.Count - layoutOffset);
         currentFlver.Meshes.RemoveRange(meshOffset, currentFlver.Meshes.Count - meshOffset);
         currentFlver.Materials.RemoveRange(materialOffset, currentFlver.Materials.Count - materialOffset);
+        currentFlver.GXLists.RemoveRange(gxOffset, currentFlver.GXLists.Count - gxOffset);
+
+        if (currentTPF is not null && newFlverTpf is not null)
+        {
+            while (addActions.Count > 0)
+            {
+                addActions.Pop().Undo();
+            }
+        }
+
         refresher.Invoke();
     }
 }

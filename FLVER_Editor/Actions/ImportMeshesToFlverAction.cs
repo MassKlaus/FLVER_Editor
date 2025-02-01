@@ -52,7 +52,9 @@ public class ImportMeshesToFlverAction : TransformAction
         oldNodes.Clear();
         oldBaseBones.Clear();
         oldNodeFlags.Clear();
-        oldNodes.Clear();
+        oldBaseBones.Clear();
+        oldAllBones.Clear();
+        
         flver.Skeletons ??= new();
 
         SaveNodeFlags(flver);
@@ -125,8 +127,6 @@ public class ImportMeshesToFlverAction : TransformAction
 
     private void SaveNodesToSkeleton(FLVER2 flver, List<FLVER2.SkeletonSet.Bone> skeleton, List<FLVER2.SkeletonSet.Bone> backup)
     {
-        backup.Clear();
-
         for (int i = 0; i < skeleton.Count; i++)
         {
             var node = skeleton[i];
@@ -144,7 +144,7 @@ public class ImportMeshesToFlverAction : TransformAction
     private void UndoNodesToSkeleton(FLVER2 flver, List<FLVER2.SkeletonSet.Bone> skeleton, List<FLVER2.SkeletonSet.Bone> backup)
     {
         skeleton.Clear();
-
+        
         for (int i = 0; i < backup.Count; i++)
         {
             var node = backup[i];

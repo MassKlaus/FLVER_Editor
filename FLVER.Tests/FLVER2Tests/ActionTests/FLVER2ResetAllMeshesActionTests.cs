@@ -15,10 +15,15 @@ public class FLVER2ResetAllMeshesActionTests : IClassFixture<DataFixture>
     }
 
     [Fact]
-    public void UnWrittenTest()
+    public void CheckingIfAllMeshesUndoIsValid()
     {
-        // This is a placeholder for future implementation.
-        // Ensure that the actual logic is implemented later.
-        Assert.Fail("This test needs to be implemented.");
+        var file = FLVER2.Read(dataFixture.Flver2_1);
+        var expected = dataFixture.Flver2_1_Read;
+        
+        ResetAllMeshesAction action = new(file);
+        action.Execute();
+        action.Undo();
+
+        FlverTestHelper.Equal(expected, file);
     }
 }

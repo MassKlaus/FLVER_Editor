@@ -51,7 +51,7 @@ public class FLVERConverter
                 BigEndian = flver0.Header.BigEndian,
                 BoundingBoxMin = flver0.Header.BoundingBoxMin,
                 BoundingBoxMax = flver0.Header.BoundingBoxMax,
-                Unicode = flver0.Header.Unicode
+                Unicode = flver0.Header.Unicode,
             },
             Dummies = new List<FLVER.Dummy>(),
             Materials = new List<FLVER2.Material>(),
@@ -67,7 +67,7 @@ public class FLVERConverter
             FLVER2.Material newMaterial = new()
             {
                 Name = material.Name,
-                MTD = material.MTD
+                MTD = material.MTD,
                 // TODO: Layout conversion method...
             };
             foreach (FLVER0.Texture? texture in material.Textures)
@@ -149,13 +149,19 @@ public class FLVERConverter
             flver0.Nodes.Add(node);
         foreach (FLVER2.Mesh? mesh in flver2.Meshes)
         {
+            var indices = new short[28];
+
+            for (int i = 0; i < mesh.BoneIndices.Count && i < 28; i++)
+            {
+                indices[i] = (short)mesh.BoneIndices[i];
+            }
             FLVER0.Mesh newMesh = new()
             {
                 Vertices = mesh.Vertices,
                 VertexIndices = mesh.FaceSets[0].Indices,
-                BoneIndices = mesh.BoneIndices.Select(i => (short)i).ToArray(),
+                BoneIndices = indices,
                 Dynamic = (byte)(mesh.UseBoneWeights ? 1 : 0),
-                MaterialIndex = (byte)mesh.MaterialIndex
+                MaterialIndex = (byte)mesh.MaterialIndex,
                 // ...
             };
             flver0.Meshes.Add(newMesh);

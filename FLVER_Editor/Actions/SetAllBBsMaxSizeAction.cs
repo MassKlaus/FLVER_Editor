@@ -16,6 +16,8 @@ namespace FLVER_Editor.Actions
         private Dictionary<FLVER2.Mesh, BoundingRange?> oldBoxes = new();
         private readonly FLVER2 flver;
         private readonly Action refresher;
+        public static readonly Vector3 minVector = new(0, 0, 0);
+        public static readonly Vector3 maxVector = new(999, 999, 999);
 
         public SetAllBBsMaxSizeAction(FLVER2 flver, Action refresher)
         {
@@ -25,19 +27,18 @@ namespace FLVER_Editor.Actions
 
         public override void Execute()
         {
-            Vector3 minVector = new(0, 0, 0);
-            Vector3 maxVector = new(999, 999, 999);
+            
 
             HeaderRange = new(flver.Header.BoundingBoxMax, flver.Header.BoundingBoxMin);
 
-            flver.Header.BoundingBoxMin = maxVector;
-            flver.Header.BoundingBoxMax = minVector;
+            flver.Header.BoundingBoxMin = minVector;
+            flver.Header.BoundingBoxMax = maxVector;
             foreach (var mesh in flver.Meshes)
             {
                 oldBoxes.Add(mesh, mesh.BoundingBox is null ? null : new BoundingRange(mesh.BoundingBox.Max, mesh.BoundingBox.Min));
                 mesh.BoundingBox ??= new FLVER2.Mesh.BoundingBoxes();
-                mesh.BoundingBox.Min = maxVector;
-                mesh.BoundingBox.Max = minVector;
+                mesh.BoundingBox.Min = minVector;
+                mesh.BoundingBox.Max = maxVector;
             }
 
             refresher.Invoke();

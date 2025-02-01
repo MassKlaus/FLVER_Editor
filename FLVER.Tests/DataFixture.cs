@@ -7,20 +7,29 @@ using SoulsFormats;
 [assembly: AssemblyFixture(typeof(DataFixture))]
 public class DataFixture : IDisposable
 {
+    public const string Bnd3_1_File = "./Assets/bnd3_1.dcx";
+    public const string Flver0_1_File = "./Assets/flver0_1.flver";
+    public const string Flver2_1_File = "./Assets/flver2_1.flver";
+    public const string Fbx_1_File = "./Assets/fbx_1.fbx";
+    public const string Flver2_1_Fbx_Imported_File = "./Assets/flver2_1_fbx_imported.flver";
+    public const string Flver2_1_Double_Fused_File = "./Assets/flver2_1_double_fused.flver";
     public DataFixture()
     {
         // Preload all test files here
-        Bnd3_1 = File.ReadAllBytes("./Assets/bnd3_1.dcx");
-        
-        Flver0_1 = File.ReadAllBytes("./Assets/flver0_1.flver");
+        Bnd3_1 = File.ReadAllBytes(Bnd3_1_File);
+        Bnd3_1_Read = BND3.Read(Bnd3_1);
+
+        Flver0_1 = File.ReadAllBytes(Flver0_1_File);
         Flver0_1_Read = FLVER0.Read(Flver0_1);
         
-        Flver2_1 = File.ReadAllBytes("./Assets/flver2_1.flver");
+        Flver2_1 = File.ReadAllBytes(Flver2_1_File);
         Flver2_1_Read = FLVER2.Read(Flver2_1);
-
-        Fbx_1 = FbxMeshData.Import("./Assets/fbx_1.fbx").Select(x => new FbxMeshDataViewModel(x)).ToList();
-        Flver2_1_Fbx_Imported = File.ReadAllBytes("./Assets/flver2_1_fbx_imported.flver");
+        
+        Flver2_1_Fbx_Imported = File.ReadAllBytes(Flver2_1_Fbx_Imported_File);
         Flver2_1_Fbx_Imported_Read = FLVER2.Read(Flver2_1_Fbx_Imported);
+
+        Flver2_1_Double_Fused = File.ReadAllBytes(Flver2_1_Double_Fused_File);
+        Flver2_1_Double_Fused_Read = FLVER2.Read(Flver2_1_Double_Fused);
     }
 
     public MeshImportOptions GetImportOptions(FLVER2 flver)
@@ -38,20 +47,29 @@ public class DataFixture : IDisposable
         return options;
     }
 
+    private Dictionary<FbxMeshDataViewModel, MeshImportOptions>? cachedFbx = null;
+
     public Dictionary<FbxMeshDataViewModel, MeshImportOptions> GetFbxDictionary(FLVER2 file) {
+        if (cachedFbx is not null)
+        {
+            return cachedFbx;
+        }
+
         var options = GetImportOptions(file);
 
         Dictionary<FbxMeshDataViewModel, MeshImportOptions> meshData = new();
 
-        foreach (var fbx in Fbx_1)
+        foreach (var fbx in FbxMeshData.Import(Fbx_1_File).Select(x => new FbxMeshDataViewModel(x)).ToList())
         {
             meshData.Add(fbx, options);
         }
 
+        cachedFbx = meshData;
+
         return meshData;
     }
 
-    public string VersionString(FLVER2 flver) {
+    public string? VersionString(FLVER2 flver) {
         return flver.Header.Version switch
         {
             131084 => "DS1",
@@ -78,6 +96,7 @@ public class DataFixture : IDisposable
     }
 
     public byte[] Bnd3_1 { get; private set; }
+    public BND3 Bnd3_1_Read { get; private set; }
     
     public byte[] Flver0_1 { get; private set; }
     public FLVER0 Flver0_1_Read { get; private set; }
@@ -85,8 +104,10 @@ public class DataFixture : IDisposable
     public byte[] Flver2_1 { get; private set; }
     public FLVER2 Flver2_1_Read { get; private set; }
     
-    public List<FbxMeshDataViewModel> Fbx_1 { get; private set; }
     public byte[] Flver2_1_Fbx_Imported { get; private set; }
     public FLVER2 Flver2_1_Fbx_Imported_Read { get; private set; }
+
+    public byte[] Flver2_1_Double_Fused { get; private set; }
+    public FLVER2 Flver2_1_Double_Fused_Read { get; private set; }
 
 }

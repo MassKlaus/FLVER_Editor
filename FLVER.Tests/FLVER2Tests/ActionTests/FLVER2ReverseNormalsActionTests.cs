@@ -17,8 +17,13 @@ public class FLVER2ReverseNormalsActionTests : IClassFixture<DataFixture>
     [Fact]
     public void UnWrittenTest()
     {
-        // This is a placeholder for future implementation.
-        // Ensure that the actual logic is implemented later.
-        Assert.Fail("This test needs to be implemented.");
+        var file = FLVER2.Read(dataFixture.Flver2_1);
+        var expected = dataFixture.Flver2_1_Read;
+
+        ReverseNormalsAction action = new(file.Meshes[0].Vertices, () => { });
+        action.Execute();
+        action.Undo();
+        FlverTestHelper.Equal(expected.Meshes[0], file.Meshes[0]);
+
     }
 }

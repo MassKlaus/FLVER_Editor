@@ -15,10 +15,20 @@ public class FLVER2MergeFlversActionTests : IClassFixture<DataFixture>
     }
 
     [Fact]
-    public void UnWrittenTest()
+    public void MergeFlversWithNoBNDAndNoTPFThenUndo()
     {
-        // This is a placeholder for future implementation.
-        // Ensure that the actual logic is implemented later.
-        Assert.Fail("This test needs to be implemented.");
+        var expected = dataFixture.Flver2_1_Double_Fused_Read;
+        var undoExpected = dataFixture.Flver2_1_Read;
+
+        var file = FLVER2.Read(dataFixture.Flver2_1);
+        var mergedInFile = FLVER2.Read(dataFixture.Flver2_1);
+
+        MergeFlversAction action = new(file, mergedInFile, null, null, () => {});
+        action.Execute();
+
+        FlverTestHelper.Equal(expected, file);
+        action.Undo();
+
+        FlverTestHelper.Equal(undoExpected, file);
     }
 }

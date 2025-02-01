@@ -9,13 +9,11 @@ namespace FLVER_Editor.Actions
 {
     public class ToggleBackFacesAction : TransformAction
     {
-        private readonly FLVER2 flver;
         private readonly List<FLVER2.FaceSet> facesets;
         private readonly Action refresher;
 
-        public ToggleBackFacesAction(FLVER2 flver, List<FLVER2.FaceSet> facesets, Action refresher)
+        public ToggleBackFacesAction(List<FLVER2.FaceSet> facesets, Action refresher)
         {
-            this.flver = flver;
             this.facesets = facesets;
             this.refresher = refresher;
         }

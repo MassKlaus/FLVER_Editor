@@ -1292,27 +1292,58 @@ public partial class MainWindow : Form
 
     private void TexturesTableButtonClicked(object sender, DataGridViewCellEventArgs e)
     {
-        if (e.RowIndex < 0 || e.ColumnIndex != 2) return;
-        OpenFileDialog dialog = new() { Filter = ImageFilesFilter };
-        if (dialog.ShowDialog() != DialogResult.OK) return;
-        //UpdateUndoState();
-        string filename = dialog.FileName;
-        string? oldfilename = Flver.Materials[SelectedMaterialIndex].Textures[e.RowIndex].Path;
-        UpdateTextureAction action = new(Tpf, FlverBnd, FlverFilePath, filename, Path.GetFileNameWithoutExtension(oldfilename), null, filename =>
+        try
         {
-            if (Path.GetFileNameWithoutExtension(filename) == "")
+            if (e.RowIndex < 0 || e.ColumnIndex != 2) return;
+            OpenFileDialog dialog = new() { Filter = ImageFilesFilter };
+            if (dialog.ShowDialog() != DialogResult.OK) return;
+            //UpdateUndoState();
+            string textureFilePath = dialog.FileName;
+            string? oldfilename = Flver.Materials[SelectedMaterialIndex].Textures[e.RowIndex].Path;
+            var oldTextureName = Flver.Materials[SelectedMaterialIndex].Textures[e.RowIndex].Path;
+            var newTexture = LoadDDSToTexture(textureFilePath);
+
+            UpdateTextureAction action = new(Tpf, newTexture, oldTextureName, textureName =>
             {
-                Flver.Materials[SelectedMaterialIndex].Textures[e.RowIndex].Path = "";
-            }
-            else
+                if (Path.GetFileNameWithoutExtension(textureName) == "")
+                {
+                    Flver.Materials[SelectedMaterialIndex].Textures[e.RowIndex].Path = "";
+                }
+                else
+                {
+                    Flver.Materials[SelectedMaterialIndex].Textures[e.RowIndex].Path = $"{Path.GetFileNameWithoutExtension(textureName)}.tif";
+                }
+                SaveTPF();
+                SafeUpdateTexturesTable();
+                UpdateMesh();
+                Viewer.RefreshTextures();
+            });
+            ActionManager.Apply(action);
+        }
+        catch (Exception)
+        {
+            ShowErrorDialog("An error occurred while attempting to update texture.");
+        }
+    }
+    private static TPF.Texture? LoadDDSToTexture(string textureFilePath)
+
+    {
+        TPF.Texture? newTexture = null;
+
+        if (textureFilePath != "")
+        {
+            byte[] ddsBytes = File.ReadAllBytes(textureFilePath);
+            DDS dds = new(ddsBytes);
+            byte formatByte = 107;
+            try
             {
-                Flver.Materials[SelectedMaterialIndex].Textures[e.RowIndex].Path = $"{Path.GetFileNameWithoutExtension(filename)}.tif";
+                formatByte = (byte)Enum.Parse(typeof(Program.TextureFormats), dds.header10.dxgiFormat.ToString());
             }
-            SafeUpdateTexturesTable();
-            UpdateMesh();
-            Viewer.RefreshTextures();
-        });
-        ActionManager.Apply(action);
+            catch { }
+            newTexture = new(Path.GetFileNameWithoutExtension(textureFilePath), formatByte, 0x00, File.ReadAllBytes(textureFilePath));
+        }
+
+        return newTexture;
     }
 
     private void ResetModifierNumBoxValues()
@@ -1884,7 +1915,9 @@ public partial class MainWindow : Form
                     break;
 
                 case FLVERType.FLVER0:
+                    Flver.Write(filePath + "CR");
                     FLVERConverter.ConvertToFLVER0(Flver).Write(filePath);
+
                     break;
 
                 default:
@@ -2185,7 +2218,7 @@ public partial class MainWindow : Form
     {
         if (IsSettingDefaultInfo) return;
         List<FLVER2.FaceSet> facesets = SelectedMeshIndices.SelectMany(i => Flver.Meshes[i].FaceSets).ToList();
-        ToggleBackFacesAction action = new(Flver, facesets, () => { UpdateMesh(); });
+        ToggleBackFacesAction action = new(facesets, () => { UpdateMesh(); });
         ActionManager.Apply(action);
         ShowInformationDialog("Mesh backfaces have been toggled!");
     }
@@ -2332,6 +2365,21 @@ public partial class MainWindow : Form
         }
     }
 
+    private void SaveTPF()
+    {
+        BinderFile? flverBndTpfEntry = FlverBnd?.Files.FirstOrDefault(i => i.Name.EndsWith(".tpf"));
+
+        if (FlverBnd is not null && flverBndTpfEntry is not null)
+        {
+            FlverBnd.Files[FlverBnd.Files.IndexOf(flverBndTpfEntry)].Bytes = Tpf.Write();
+        }
+        else if (Tpf is not null)
+        {
+            if (FlverFilePath.Contains(".flver")) Tpf.Write(Program.RemoveIndexSuffix(FlverFilePath).Replace(".flver", ".tpf"));
+            else if (FlverFilePath.Contains(".flv")) Tpf.Write(Program.RemoveIndexSuffix(FlverFilePath).Replace(".flv", ".tpf"));
+        }
+    }
+
     private void MergeFLVERFile()
     {
         string newFlverFilePath = PromptFLVERModel();
@@ -2341,13 +2389,21 @@ public partial class MainWindow : Form
             FLVER2 newFlver = IsFLVERPath(newFlverFilePath) ? FLVER2.Read(newFlverFilePath) :
                 ReadFLVERFromDCXPath(newFlverFilePath, false, false, false);
             if (newFlver == null) return;
-            MergeFlversAction action = new(FlverBnd, Flver, newFlver, FlverFilePath, newFlverFilePath, () =>
+
+            TPF? newFlverTpf = null;
+            if (newFlverFilePath.EndsWith(".flver"))
             {
+                newFlverTpf = TPF.Read(newFlverFilePath.Replace(".flver", ".tpf"));
+            }
+            MergeFlversAction action = new(Flver, newFlver, Tpf, newFlverTpf, () =>
+            {
+                SaveTPF();
                 SafeDeselectAllSelectedThings();
                 SafeUpdateUI();
                 UpdateMesh();
                 Viewer.RefreshTextures();
             });
+
             ActionManager.Apply(action);
             ShowInformationDialog(@"Successfully attached new FLVER to the current one!");
         }
@@ -2658,28 +2714,27 @@ public partial class MainWindow : Form
         return v;
     }
 
-    private void MirrorMesh(int nbi)
+    private void MirrorMesh(TransformAxis axis)
     {
-        float[] totals = CalculateMeshCenter();
         List<FLVER2.Mesh> targetMeshes = SelectedMeshIndices.Select(i => Flver.Meshes[i]).ToList();
         List<FLVER.Dummy> targetDummies = SelectedDummyIndices.Select(i => Flver.Dummies[i]).ToList();
-        MirrorMeshAction action = new(targetMeshes, targetDummies, nbi, totals, useWorldOriginCheckbox.Checked, vectorModeCheckbox.Checked, () => { UpdateMesh(); });
+        MirrorMeshAction action = new(targetMeshes, targetDummies, axis, useWorldOriginCheckbox.Checked, vectorModeCheckbox.Checked, () => { UpdateMesh(); });
         ActionManager.Apply(action);
     }
 
     private void MirrorXCheckboxCheckedChanged(object sender, EventArgs e)
     {
-        MirrorMesh(0);
+        MirrorMesh(TransformAxis.X);
     }
 
     private void MirrorYCheckboxCheckedChanged(object sender, EventArgs e)
     {
-        MirrorMesh(1);
+        MirrorMesh(TransformAxis.Y);
     }
 
     private void MirrorZCheckboxCheckedChanged(object sender, EventArgs e)
     {
-        MirrorMesh(2);
+        MirrorMesh(TransformAxis.Z);
     }
 
     private void ToggleAutoSaveToolStripMenuItemClick(object sender, EventArgs e)
