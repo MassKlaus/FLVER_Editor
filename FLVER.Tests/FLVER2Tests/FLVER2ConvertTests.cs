@@ -20,4 +20,15 @@ public class FLVER2ConvertTests : IClassFixture<DataFixture>
 
         FlverTestHelper.Equal(dataFixture.Flver2_1_Read, flver2);
     }
+
+    [Fact]
+    public void ConvertFlver2To0EnsureBoneIndicesInMeshesIs28Long() 
+    {
+        var flver0 = FLVERConverter.ConvertToFLVER0(dataFixture.Flver2_1_Fbx_Imported_Read);
+
+        foreach (var mesh in flver0.Meshes)
+        {
+            Assert.Equal(28, mesh.BoneIndices.Length);            
+        }
+    }
 }
